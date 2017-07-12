@@ -1,17 +1,56 @@
-machine:
-  xcode:
-    version: "8.2"
+version: 2
 
-dependencies:
-  pre:
-    - gem install bundler
+jobs:
+  build:
+    xcode:
+      version: "8.2"
+    steps:
+      - checkout
+      - run: gem install bundler
 
-test:
-  override:
-    - bundle exec fastlane test
+  test:
+    steps:
+      - run: bundle exec fastlane test
 
-deployment:
   internal_distribution:
     branch: release
-    commands: 
-      - bundle exec fastlane deploy
+    steps:
+      - run: bundle exec fastlane deploy
+
+workflows:
+  version: 2
+  test:
+    jobs:
+      - build
+      - test:
+        requires:
+          - build
+
+  distribution:
+    branch: master
+    jobs:
+      - trigger:
+        type: approval
+      - build:
+        requires:
+          - trigger
+      - test:
+        requires:
+          - build
+      - internal_distribution:
+        requires:
+          - test
+
+  internal_distribution:
+    jobs:
+      - trigger:
+        type: approval
+      - build:
+        requires:
+          - trigger
+      - test:
+        requires:
+          - build
+      - internal_distribution:
+        requires:
+          - test
